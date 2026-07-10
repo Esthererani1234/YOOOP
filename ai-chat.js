@@ -1,1 +1,264 @@
-const chatBody=document.getElementById('chatBody');const chatInput=document.getElementById('chatInput');const suggested=document.getElementById('suggested');const chatForm=document.getElementById('chatForm');let history=JSON.parse(localStorage.getItem('yooop-ai-chat')||'[]');const quick=['Where is my order?','Start a return','I need a refund','Change my address','Talk to a human'];function save(){localStorage.setItem('yooop-ai-chat',JSON.stringify(history))}function esc(s){return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}function add(role,text,html=false){history.push({role,text,html,time:Date.now()});save();render()}function render(){chatBody.innerHTML=history.map(m=>`<div class="message ${m.role==='user'?'user':''}"><div class="avatar">${m.role==='user'?'YOU':'AI'}</div><div class="bubble">${m.html?m.text:esc(m.text)}</div></div>`).join('');chatBody.scrollTop=chatBody.scrollHeight;suggested.innerHTML=quick.map(q=>`<button onclick="askShortcut('${q.replace(/'/g,"\\'")}')">${q}</button>`).join('')}function typing(show){let t=document.getElementById('typing');if(show&&!t){chatBody.insertAdjacentHTML('beforeend','<div id="typing" class="message"><div class="avatar">AI</div><div class="typing"><i></i><i></i><i></i></div></div>');chatBody.scrollTop=chatBody.scrollHeight}else if(!show&&t)t.remove()}function getOrders(){try{return JSON.parse(localStorage.getItem('yooop-orders')||'[]')}catch{return[]}}function getProfile(){try{return JSON.parse(localStorage.getItem('yooop-profile')||'{}')}catch{return{}}}function replyFor(raw){const q=raw.toLowerCase();const orders=getOrders(),profile=getProfile();if(/hello|hi|hey/.test(q))return `Hi${profile.first?' '+esc(profile.first):''}! I can help with orders, delivery, returns, refunds, account details, and products. What do you need?`;if(/where.*order|track|delivery|package/.test(q)){if(orders.length){const o=orders[0],id=o.id||'YOOOP-10001';return `I found your latest order <strong>${esc(id)}</strong>. It is currently <strong>in transit</strong> and the estimated delivery is within 2–4 business days.<div class="action-row"><a href="tracking.html?order=${encodeURIComponent(id)}">View tracking</a><a href="orders.html">All orders</a></div>`}return `I do not see an order saved on this device yet.<div class="action-row"><a href="orders.html">Check orders</a><a href="support.html">Contact support</a></div>`}if(/return/.test(q))return `I can help start a return. Most eligible items can be returned within 30 days. Open your order, choose the item, and select a return reason.<div class="action-row"><a href="orders.html">Choose an order</a><button onclick="askShortcut('The item is damaged')">Item damaged</button><button onclick="askShortcut('I changed my mind')">Changed my mind</button></div>`;if(/refund/.test(q))return `Refund timing depends on the payment method. After a return is received, processing usually takes 2–5 business days in this demo flow.<div class="action-row"><a href="orders.html">Check refund status</a><button onclick="createHumanTicket('Refund assistance')">Ask a specialist</button></div>`;if(/damaged|broken|wrong item|missing item/.test(q))return `I’m sorry about that. I can create a priority support request. Keep the packaging and take clear photos of the item and shipping label.<div class="action-row"><button onclick="createHumanTicket('Damaged or incorrect item')">Create priority ticket</button><a href="orders.html">Open order</a></div>`;if(/address|change.*shipping/.test(q))return `You can update your saved address from your account. If an order has already shipped, the delivery address usually cannot be changed.<div class="action-row"><a href="account.html">Manage address</a><button onclick="createHumanTicket('Address change request')">Request help</button></div>`;if(/login|password|sign in|account/.test(q))return `For account access, use the login page. This demo stores sign-in information only on your device.<div class="action-row"><a href="login.html">Go to login</a><a href="account.html">Account settings</a></div>`;if(/human|agent|representative|person/.test(q))return `I can escalate this to human support. Please create a ticket and include the order number plus a short description.<div class="action-row"><button onclick="createHumanTicket('Customer requested human support')">Create human-support ticket</button><a href="messages.html">Open messages</a></div>`;if(/cancel/.test(q))return `Orders can usually be canceled before fulfillment starts. Open the order immediately to check whether cancellation is available.<div class="action-row"><a href="orders.html">View orders</a><button onclick="createHumanTicket('Order cancellation request')">Request cancellation</button></div>`;if(/recommend|product|looking for|find me/.test(q))return `I can help you shop. Tell me the product type, your budget, and the most important feature, or browse the current catalog.<div class="action-row"><a href="index.html#products">Browse products</a></div>`;if(/thank/.test(q))return `You’re welcome! Is there anything else I can help with?`;return `I can help with that. For the best answer, include an order number, product name, or whether this is about shipping, returns, refunds, account access, or a product question.<div class="action-row"><button onclick="askShortcut('Where is my order?')">Track order</button><button onclick="askShortcut('I want to return an item')">Return item</button><button onclick="createHumanTicket('General support request')">Human support</button></div>`}function send(text){const v=(text||chatInput.value).trim();if(!v)return;add('user',v);chatInput.value='';typing(true);setTimeout(()=>{typing(false);add('assistant',replyFor(v),true)},650+Math.random()*450)}function askShortcut(q){send(q)}function clearChat(){history=[];save();welcome()}function createHumanTicket(subject){const tickets=JSON.parse(localStorage.getItem('yooop-support-tickets')||'[]');const id='YT-'+String(Date.now()).slice(-7);tickets.unshift({id,subject,status:'Open',created:new Date().toISOString()});localStorage.setItem('yooop-support-tickets',JSON.stringify(tickets));add('assistant',`Your support ticket <strong>${id}</strong> has been created. A human-support specialist can review it from the customer-service area.<div class="action-row"><a href="messages.html">View messages</a><a href="support.html">Customer service</a></div>`,true)}function welcome(){add('assistant','Hi! I’m the YOOOP AI Assistant. I can help track orders, start returns, explain refunds, update account information, recommend products, or create a human-support ticket.',false)}chatForm.addEventListener('submit',e=>{e.preventDefault();send()});chatInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}});chatInput.addEventListener('input',()=>{chatInput.style.height='auto';chatInput.style.height=Math.min(chatInput.scrollHeight,130)+'px'});if(!history.length)welcome();else render();
+const chatBody = document.getElementById('chatBody');
+const chatInput = document.getElementById('chatInput');
+const suggested = document.getElementById('suggested');
+const chatForm = document.getElementById('chatForm');
+
+const STORAGE_KEY = 'yooop-ai-chat';
+const MAX_LOCAL_MESSAGES = 60;
+const quick = [
+  'Where is my latest order?',
+  'Help me return an item',
+  'My package is late',
+  'I received the wrong item',
+  'Help me choose a product',
+  'Talk to human support'
+];
+
+let history = readLocal(STORAGE_KEY, []);
+let sending = false;
+
+function readLocal(key, fallback) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key));
+    return value ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeLocal(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[character]));
+}
+
+function formatMessage(value) {
+  const safe = escapeHtml(value);
+  return safe
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^[-•]\s+(.+)$/gm, '<span class="chat-list-item">• $1</span>')
+    .replace(/\n/g, '<br>');
+}
+
+function saveHistory() {
+  history = history.slice(-MAX_LOCAL_MESSAGES);
+  writeLocal(STORAGE_KEY, history);
+}
+
+function pushMessage(role, text) {
+  history.push({ role, text: String(text), time: Date.now() });
+  saveHistory();
+  render();
+}
+
+function render() {
+  if (!chatBody) return;
+
+  chatBody.innerHTML = history.map((message) => `
+    <div class="message ${message.role === 'user' ? 'user' : ''}">
+      <div class="avatar">${message.role === 'user' ? 'YOU' : 'AI'}</div>
+      <div class="bubble">${formatMessage(message.text)}</div>
+    </div>
+  `).join('');
+
+  chatBody.scrollTop = chatBody.scrollHeight;
+
+  if (suggested) {
+    suggested.innerHTML = quick.map((question) => `
+      <button type="button" onclick="askShortcut('${question.replace(/'/g, "\\'")}')">
+        ${escapeHtml(question)}
+      </button>
+    `).join('');
+  }
+}
+
+function setTyping(show) {
+  const existing = document.getElementById('typing');
+  if (!show) {
+    existing?.remove();
+    return;
+  }
+
+  if (existing || !chatBody) return;
+  chatBody.insertAdjacentHTML('beforeend', `
+    <div id="typing" class="message">
+      <div class="avatar">AI</div>
+      <div class="typing"><i></i><i></i><i></i></div>
+    </div>
+  `);
+  chatBody.scrollTop = chatBody.scrollHeight;
+}
+
+function getCustomerContext() {
+  const orders = readLocal('yooop-orders', []);
+  const profile = readLocal('yooop-user', readLocal('yooop-profile', {}));
+  const cart = readLocal('yooop-cart', {});
+
+  return {
+    profile: sanitizeProfile(profile),
+    cart: sanitizeCart(cart),
+    orders: sanitizeOrders(orders),
+    page: window.location.pathname
+  };
+}
+
+function sanitizeProfile(profile) {
+  if (!profile || typeof profile !== 'object') return {};
+  return {
+    first: profile.first || profile.name || '',
+    last: profile.last || '',
+    email: profile.email || '',
+    city: profile.city || '',
+    state: profile.state || '',
+    zip: profile.zip || ''
+  };
+}
+
+function sanitizeCart(cart) {
+  if (!cart || typeof cart !== 'object') return {};
+  return Object.fromEntries(Object.entries(cart).slice(0, 30));
+}
+
+function sanitizeOrders(orders) {
+  if (!Array.isArray(orders)) return [];
+  return orders.slice(0, 10).map((order) => ({
+    id: order?.id || '',
+    date: order?.date || '',
+    total: order?.total || 0,
+    status: order?.status || '',
+    address: order?.address || '',
+    items: Array.isArray(order?.items)
+      ? order.items.slice(0, 10).map((item) => ({
+          name: item?.p?.name || item?.name || '',
+          quantity: item?.qty || item?.quantity || 1,
+          price: item?.p?.price || item?.price || 0
+        }))
+      : [],
+    steps: Array.isArray(order?.steps) ? order.steps.slice(0, 10) : []
+  }));
+}
+
+async function requestAI() {
+  const messages = history
+    .filter((message) => message.role === 'user' || message.role === 'assistant')
+    .slice(-20)
+    .map((message) => ({ role: message.role, content: message.text }));
+
+  const response = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages,
+      context: getCustomerContext()
+    })
+  });
+
+  let data = {};
+  try {
+    data = await response.json();
+  } catch {
+    // The server returned a non-JSON error page.
+  }
+
+  if (!response.ok) {
+    throw new Error(data.error || 'The AI assistant could not respond right now.');
+  }
+
+  if (!data.reply) {
+    throw new Error('The AI assistant returned an empty response.');
+  }
+
+  return data.reply;
+}
+
+async function send(text) {
+  const value = String(text || chatInput?.value || '').trim();
+  if (!value || sending) return;
+
+  sending = true;
+  if (chatInput) {
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+    chatInput.disabled = true;
+  }
+
+  const submitButton = chatForm?.querySelector('button[type="submit"]');
+  if (submitButton) submitButton.disabled = true;
+
+  pushMessage('user', value);
+  setTyping(true);
+
+  try {
+    const reply = await requestAI();
+    setTyping(false);
+    pushMessage('assistant', reply);
+  } catch (error) {
+    setTyping(false);
+    pushMessage('assistant', `${error.message}\n\nYou can still open Customer Service or Messages for help.`);
+  } finally {
+    sending = false;
+    if (chatInput) {
+      chatInput.disabled = false;
+      chatInput.focus();
+    }
+    if (submitButton) submitButton.disabled = false;
+  }
+}
+
+function askShortcut(question) {
+  send(question);
+}
+
+function clearChat() {
+  history = [];
+  saveHistory();
+  welcome();
+}
+
+function createHumanTicket(subject) {
+  const tickets = readLocal('yooop-support-tickets', []);
+  const id = `YT-${String(Date.now()).slice(-7)}`;
+  tickets.unshift({
+    id,
+    subject,
+    status: 'Open',
+    created: new Date().toISOString()
+  });
+  writeLocal('yooop-support-tickets', tickets);
+  pushMessage('assistant', `Support ticket ${id} was created on this device. Open Customer Service or Messages to continue.`);
+}
+
+function welcome() {
+  pushMessage(
+    'assistant',
+    'Hi! I’m YOOOP AI Customer Care. You can speak naturally—I can understand questions about orders, delivery, returns, refunds, damaged items, account access, and product choices.'
+  );
+}
+
+chatForm?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  send();
+});
+
+chatInput?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    send();
+  }
+});
+
+chatInput?.addEventListener('input', () => {
+  chatInput.style.height = 'auto';
+  chatInput.style.height = `${Math.min(chatInput.scrollHeight, 130)}px`;
+});
+
+if (!history.length) welcome();
+else render();
